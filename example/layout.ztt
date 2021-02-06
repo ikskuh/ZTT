@@ -1,0 +1,12 @@
+# <? try output.writeAll(context.title); ?>
+
+## Contents
+<? for(context.chapters) |chapter, i| { ?>
+- <? try output.print("{}. {s}", .{ i+1, chapter.title }); ?><? } ?>
+
+<? for(context.chapters) |chapter| { ?>
+## <? try output.writeAll(chapter.title); try output.writeAll("\n");
+
+try output.writeAll(chapter.content);
+try output.writeAll("\n");
+} ?>
