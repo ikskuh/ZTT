@@ -5,38 +5,39 @@ const Self = @This();
 step: std.build.Step,
 builder: *std.build.Builder,
 source: std.build.FileSource,
-output_dir: []const u8,
-file_name: []const u8,
 
 output_file: std.build.GeneratedFile,
 
-pub fn create(builder: *std.build.Builder, source: std.build.FileSource) *Self {
+pub fn create(builder: *std.build.Builder, file: []const u8) *Self {
+    return createSource(builder, .{ .path = file });
+}
+
+pub fn createSource(builder: *std.build.Builder, source: std.build.FileSource) *Self {
     const self = builder.allocator.create(Self) catch unreachable;
     self.* = Self{
-        .step = std.build.Step.init(.Custom, "build-template", builder.allocator, make),
+        .step = std.build.Step.init(.custom, "build-template", builder.allocator, make),
         .builder = builder,
         .source = source,
 
-        .output_file = std.build.GeneratedFile{
-            .step = &self.step,
-            .getPathFn = getGeneratedFilePath,
-        },
-
-        .output_dir = undefined,
-        .file_name = undefined,
+        .output_file = std.build.GeneratedFile{ .step = &self.step },
     };
     source.addStepDependencies(&self.step);
     return self;
 }
 
+pub fn transform(builder: *std.build.Builder, file: []const u8) std.build.FileSource {
+    const step = create(builder, file);
+    return step.getFileSource();
+}
+
+pub fn transformSource(builder: *std.build.Builder, source: std.build.FileSource) std.build.FileSource {
+    const step = createSource(builder, source);
+    return step.getFileSource();
+}
+
 /// Returns the file source
 pub fn getFileSource(self: *const Self) std.build.FileSource {
     return std.build.FileSource{ .generated = &self.output_file };
-}
-
-fn getGeneratedFilePath(file: *const std.build.GeneratedFile) []const u8 {
-    const self = @fieldParentPtr(Self, "step", file.step);
-    return self.file_name;
 }
 
 fn make(step: *std.build.Step) !void {
@@ -241,24 +242,20 @@ fn make(step: *std.build.Step) !void {
 
     var hash_basename: [64]u8 = undefined;
     _ = std.fs.base64_encoder.encode(&hash_basename, &digest);
-    self.output_dir = try std.fs.path.join(self.builder.allocator, &[_][]const u8{
+    const output_dir = try std.fs.path.join(self.builder.allocator, &[_][]const u8{
         self.builder.cache_root,
         "o",
         &hash_basename,
     });
     // std.debug.print("out dir = {s}\n", .{self.output_dir});
 
-    // TODO replace with something like fs.makePathAndOpenDir
-    std.fs.cwd().makePath(self.output_dir) catch |err| {
-        std.debug.print("unable to make path {s}: {s}\n", .{ self.output_dir, @errorName(err) });
+    var dir = std.fs.cwd().makeOpenPath(output_dir, .{}) catch |err| {
+        std.debug.print("unable to make path {s}: {s}\n", .{ output_dir, @errorName(err) });
         return err;
     };
 
-    var dir = try std.fs.cwd().openDir(self.output_dir, .{});
-    defer dir.close();
-
-    self.file_name = try std.fs.path.join(self.builder.allocator, &[_][]const u8{
-        self.output_dir,
+    self.output_file.path = try std.fs.path.join(self.builder.allocator, &[_][]const u8{
+        output_dir,
         output_name,
     });
 
@@ -267,7 +264,7 @@ fn make(step: *std.build.Step) !void {
     dir.writeFile(output_name, output_buffer.items) catch |err| {
         std.debug.print("unable to write {s} into {s}: {s}\n", .{
             output_name,
-            self.output_dir,
+            output_dir,
             @errorName(err),
         });
         return err;
