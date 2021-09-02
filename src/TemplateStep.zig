@@ -78,11 +78,13 @@ fn make(step: *std.build.Step) !void {
         var reader = buffered_reader.reader();
         var writer = output_buffer.writer();
 
+        const UnderlyingWriter = @TypeOf(writer);
+
         const Writer = struct {
             const W = @This();
             const State = enum { init, text, code, done };
 
-            writer: @TypeOf(writer),
+            writer: UnderlyingWriter,
             state: State = .init,
 
             fn start(wr: *W) !void {
