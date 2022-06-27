@@ -6,14 +6,12 @@ pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
     const mode = b.standardReleaseOptions();
 
-    const template_step = TemplateStep.create(b, std.build.FileSource{
-        .path = "example/layout.ztt",
-    });
+    const template_step = TemplateStep.create(b, "example/layout.ztt");
 
     const exe = b.addExecutable("demo", "example/main.zig");
     exe.addPackage(std.build.Pkg{
         .name = "template",
-        .path = template_step.getFileSource(),
+        .source = template_step.getFileSource(),
     });
     exe.setTarget(target);
     exe.setBuildMode(mode);
