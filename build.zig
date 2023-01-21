@@ -6,7 +6,9 @@ pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
     const mode = b.standardReleaseOptions();
 
-    const template_step = TemplateStep.create(b, "example/layout.ztt");
+    const template_step = TemplateStep.createSource(b, std.build.FileSource{
+        .path = "example/layout.ztt",
+    });
 
     const exe = b.addExecutable("demo", "example/main.zig");
     exe.addPackage(std.build.Pkg{

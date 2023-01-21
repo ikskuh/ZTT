@@ -93,8 +93,7 @@ fn make(step: *std.build.Step) !void {
                     \\const std = @import("std");
                     \\
                     \\pub fn render(output: anytype, context: anytype) !void {
-                    \\    _ = output;
-                    \\    _ = context;
+                    \\    _ = .{ output, context };
                     \\
                 );
                 wr.state = .code;
