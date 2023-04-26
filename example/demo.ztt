@@ -1,0 +1,22 @@
+<#
+// This tag let's you import global statements available to the `render()` function
+const std = @import("std");
+#>
+
+# Zig Text Template
+
+The following syntax inserts `ctx.intro` formattet with the format string `{s:-^10}`.
+
+<= ctx.intro : {s:-^10} =>
+
+The list has the following <= ctx.list.len => items:
+
+<? for(ctx.list) |item| { ?>
+    - <= item.name : {s} => *(weight <= item.weight : {d:.1} => kg)*
+<? } ?>
+
+<= "hello:world" : {s} =>
+
+<= (10 + 20 * 30) =>
+
+<= std.math.log10(10 + 20 * 30) =>
