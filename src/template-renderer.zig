@@ -1,11 +1,19 @@
 const std = @import("std");
 
 pub fn main() !void {
-    // Right now, this function is only for development and testing purposes. A proper argument parser will
-    // be implemented soon.
-    const source = @embedFile("example.ztt");
+    const argv = try std.process.argsAlloc(std.heap.c_allocator);
+    defer std.process.argsFree(std.heap.c_allocator, argv);
 
-    try renderToStream(std.heap.c_allocator, source, std.io.getStdOut().writer());
+    if (argv.len != 3)
+        @panic("usage: template-renderer <input> <output>");
+
+    const source = try std.fs.cwd().readFileAlloc(std.heap.c_allocator, argv[1], 1 << 30);
+    defer std.heap.c_allocator.free(source);
+
+    var out_file = try std.fs.cwd().createFile(argv[2], .{});
+    defer out_file.close();
+
+    try renderToStream(std.heap.c_allocator, source, out_file.writer());
 }
 
 fn isOpeningBrace(char: u8) bool {
@@ -24,14 +32,14 @@ fn scanStream(source: []const u8, pos_ptr: *usize, end_marker: u8, consume_line_
 
     while (pos < source.len) {
         if (balance == 0 and pos > original_pos and source[pos] == '>' and source[pos - 1] == end_marker) {
-            const end_pos = pos - 2;
+            const end_pos = pos - 1;
 
             if (consume_line_break and pos + 1 < source.len and source[pos + 1] == '\n') {
                 pos_ptr.* = pos + 2;
             } else {
                 pos_ptr.* = pos + 1;
             }
-            return std.mem.trim(u8, source[original_pos + 2 .. end_pos], " \t\r\n");
+            return std.mem.trim(u8, source[original_pos + 1 .. end_pos], " \t\r\n");
         } else {
             if (isOpeningBrace(source[pos])) {
                 balance += 1;
@@ -117,6 +125,12 @@ fn renderToStream(maybe_allocator: ?std.mem.Allocator, source: []const u8, strea
 
     try output.emitRaw(
         \\pub fn render(stream: anytype, ctx: anytype) !void {
+        \\  // beware of this dirty hack for pseudo-unused
+        \\  {
+        \\      const  ___magic = .{ stream, ctx };
+        \\      _ = ___magic;
+        \\  }
+        \\  // here comes the actual content
         \\
     );
 
